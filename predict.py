@@ -29,14 +29,14 @@ class Predictor(BasePredictor):
     ) -> Path:
         torch.manual_seed(42)
 
-        prompt = (
-            "Extremely clean and highly detailed black and white line art drawing of the subject and background. "
-            "No shading, no color, no blur. Must look like a professional coloring book page. Lines must be clear, distinct, and complete. "
-            "All facial features and background elements must be preserved in line form. No sketchy or abstract styles. Focus on realism, clarity, and completeness."
-        )
-
         image = Image.open(input_image).convert("RGB")
         edge = self.hed(image).resize(image.size)
+
+        prompt = (
+            "Ultra sharp black and white line art drawing of the subject and background, "
+            "no color, no shading, no gray areas, highly detailed, clean outlines, crisp edges, "
+            "full scene, adult coloring book page style, extremely accurate, realistic proportions."
+        )
 
         result = self.pipe(
             prompt=prompt,
