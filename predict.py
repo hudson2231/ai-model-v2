@@ -25,23 +25,15 @@ class Predictor(BasePredictor):
 
     def predict(
         self,
-        input_image: Path = Input(description="Uploaded photo to convert to line art"),
-        prompt: str = Input(
-            description="Prompt for style",
-            default=(
-                "High-resolution black and white line art of the uploaded photo. "
-                "Capture all people and full background exactly as shown, using smooth, clean outlines with consistent thickness. "
-                "No shading, no sketch lines, no distortion or abstraction. "
-                "Facial features and proportions must be precise. "
-                "Maintain real-life accuracy so the image is instantly recognizable. "
-                "Final result should resemble a professional adult coloring book page."
-            )
-        ),
-        num_inference_steps: int = Input(description="Steps for generation", default=30),
-        guidance_scale: float = Input(description="Classifier-free guidance scale", default=13.5),
-        seed: int = Input(description="Random seed (for reproducibility)", default=12345),
+        input_image: Path = Input(description="Uploaded photo to convert to line art")
     ) -> Path:
-        torch.manual_seed(seed)
+        torch.manual_seed(42)
+
+        prompt = (
+            "Extremely clean and highly detailed black and white line art drawing of the subject and background. "
+            "No shading, no color, no blur. Must look like a professional coloring book page. Lines must be clear, distinct, and complete. "
+            "All facial features and background elements must be preserved in line form. No sketchy or abstract styles. Focus on realism, clarity, and completeness."
+        )
 
         image = Image.open(input_image).convert("RGB")
         edge = self.hed(image).resize(image.size)
@@ -49,8 +41,8 @@ class Predictor(BasePredictor):
         result = self.pipe(
             prompt=prompt,
             image=edge,
-            num_inference_steps=num_inference_steps,
-            guidance_scale=guidance_scale
+            num_inference_steps=30,
+            guidance_scale=13.5
         ).images[0]
 
         output_path = "/tmp/output.png"
