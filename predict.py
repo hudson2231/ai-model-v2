@@ -1,15 +1,14 @@
-import os
-import cv2
 import torch
 import numpy as np
 from cog import BasePredictor, Input, Path
 from diffusers import StableDiffusionControlNetPipeline, ControlNetModel, UniPCMultistepScheduler
 from PIL import Image
+from controlnet_aux import HEDdetector
 
 class Predictor(BasePredictor):
     def setup(self):
         controlnet = ControlNetModel.from_pretrained(
-            "lllyasviel/sd-controlnet-canny",
+            "lllyasviel/sd-controlnet-hed",
             torch_dtype=torch.float16
         )
 
@@ -22,37 +21,38 @@ class Predictor(BasePredictor):
         self.pipe.scheduler = UniPCMultistepScheduler.from_config(self.pipe.scheduler.config)
         self.pipe.enable_xformers_memory_efficient_attention()
 
+        self.hed = HEDdetector.from_pretrained("lllyasviel/ControlNet")
+
     def predict(
         self,
         input_image: Path = Input(description="Uploaded photo to convert to line art"),
         prompt: str = Input(
             description="Prompt for style",
-            default="Clean black and white line art drawing of the subject. No shading, no background. Coloring book style."
+            default=(
+                "High-resolution black and white line art of the uploaded photo. "
+                "Capture all people and full background exactly as shown, using smooth, clean outlines with consistent thickness. "
+                "No shading, no sketch lines, no distortion or abstraction. "
+                "Facial features and proportions must be precise. "
+                "Maintain real-life accuracy so the image is instantly recognizable. "
+                "Final result should resemble a professional adult coloring book page."
+            )
         ),
-        num_inference_steps: int = Input(description="Steps for generation", default=20),
-        guidance_scale: float = Input(description="Classifier-free guidance scale", default=9.0),
-        seed: int = Input(description="Random seed (for reproducibility)", default=42),
+        num_inference_steps: int = Input(description="Steps for generation", default=30),
+        guidance_scale: float = Input(description="Classifier-free guidance scale", default=13.5),
+        seed: int = Input(description="Random seed (for reproducibility)", default=12345),
     ) -> Path:
         torch.manual_seed(seed)
 
-        # Load and process input image
         image = Image.open(input_image).convert("RGB")
-        np_image = np.array(image)
+        edge = self.hed(image).resize(image.size)
 
-        # Generate edge map using Canny
-        low_threshold, high_threshold = 100, 200
-        edges = cv2.Canny(np_image, low_threshold, high_threshold)
-        edge_rgb = np.stack([edges] * 3, axis=-1)
-        edge_pil = Image.fromarray(edge_rgb)
-
-        # Run the model
-        output = self.pipe(
+        result = self.pipe(
             prompt=prompt,
-            image=edge_pil,
+            image=edge,
             num_inference_steps=num_inference_steps,
             guidance_scale=guidance_scale
         ).images[0]
 
         output_path = "/tmp/output.png"
-        output.save(output_path)
+        result.save(output_path)
         return Path(output_path)
