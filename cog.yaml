@@ -1,9 +1,10 @@
 build:
   gpu: true
-  cuda: "12.1"
   python_version: "3.10"
   python_requirements: requirements.txt
-  cog_runtime: true
-  image: "r8.im/hudson2231/ai-model-v2"
+  system_packages:
+    - "libgl1-mesa-glx"
 
-predict: model.py:Predictor
+image: "r8.im/hudsonhawkins/ai-model-v2"
+
+predict: "predict.py:Predictor"
